@@ -2100,7 +2100,10 @@ name = "intent-services"
 version = "0.1.0"
 dependencies = [
  "alloy",
+ "alloy-primitives",
  "axum",
+ "serde",
+ "serde_json",
  "thiserror",
  "tokio",
 ]
