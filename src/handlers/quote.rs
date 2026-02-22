@@ -11,11 +11,10 @@ pub async fn get_quote(
     Json(payload): Json<QuoteRequest>,
 ) -> Result<Json<QuoteResponse>, AppError> {
     match state.quoter.get_quote(&payload).await {
-        Ok(_) => Ok(Json(QuoteResponse {
-            status: "success".to_string(),
-        })),
+        Ok(quote) => Ok(Json(quote)),
         Err(e) => match e {
             QuoterError::InvalidQuoteRequest(msg) => Err(AppError::Validation(msg)),
+            QuoterError::FailedToGetPrice(msg) => Err(AppError::Internal(msg))
         },
     }
 }
