@@ -1,8 +1,8 @@
-use std::fmt::Display;
 use serde::{Deserialize, Serialize};
+use std::fmt::Display;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub  enum OrderType {
+pub enum OrderType {
     Buy,
     Sell,
 }

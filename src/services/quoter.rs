@@ -1,11 +1,11 @@
-use std::sync::Arc;
-use crate::domain::quote::{IntentToSign, PriceQuality, QuoteRequest, QuoteResponse};
-use thiserror::Error;
 use crate::domain::order::OrderType;
+use crate::domain::quote::{IntentToSign, PriceQuality, QuoteRequest, QuoteResponse};
 use crate::services::price_provider::PriceProvider;
+use std::sync::Arc;
+use thiserror::Error;
 
 pub struct Quoter {
-    price_provider: Arc<PriceProvider>
+    price_provider: Arc<PriceProvider>,
 }
 
 #[derive(Error, Debug)]
@@ -18,27 +18,48 @@ pub enum QuoterError {
 
 impl Quoter {
     pub fn new(price_provider: Arc<PriceProvider>) -> Self {
-        Self {
-            price_provider,
-        }
+        Self { price_provider }
     }
-    pub async fn get_quote(&self, quote_request: &QuoteRequest) -> Result<QuoteResponse, QuoterError> {
+    pub async fn get_quote(
+        &self,
+        quote_request: &QuoteRequest,
+    ) -> Result<QuoteResponse, QuoterError> {
         self.validate_quote_request(quote_request)?;
 
         let (sell_token, buy_token, amount, is_sell) = if quote_request.sell_amount.is_some() {
-            (quote_request.sell_token, quote_request.buy_token, quote_request.sell_amount.unwrap(), true)
+            (
+                quote_request.sell_token,
+                quote_request.buy_token,
+                quote_request.sell_amount.unwrap(),
+                true,
+            )
         } else {
-            (quote_request.buy_token, quote_request.sell_token, quote_request.buy_amount.unwrap(), false)
+            (
+                quote_request.buy_token,
+                quote_request.sell_token,
+                quote_request.buy_amount.unwrap(),
+                false,
+            )
         };
 
-        let amount_out = self.price_provider.get_price(sell_token, buy_token, amount).await.map_err(|err| QuoterError::FailedToGetPrice(err.to_string()))?;
+        let amount_out = self
+            .price_provider
+            .get_price(sell_token, buy_token, amount)
+            .await
+            .map_err(|err| QuoterError::FailedToGetPrice(err.to_string()))?;
 
-        let order_type =  if is_sell { OrderType::Sell } else { OrderType::Buy };
+        let order_type = if is_sell {
+            OrderType::Sell
+        } else {
+            OrderType::Buy
+        };
         let receiver = quote_request.receiver.unwrap_or(quote_request.owner);
 
         let (sell_amount, buy_amount) = if is_sell {
             (amount, amount_out)
-        } else { (amount_out, amount) };
+        } else {
+            (amount_out, amount)
+        };
 
         let intent_to_sign = IntentToSign {
             order_type,

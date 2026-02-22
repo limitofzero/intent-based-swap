@@ -1,6 +1,6 @@
 use alloy::providers::{Provider, ProviderBuilder};
 use alloy::transports::http::Client;
-use alloy_primitives::{address, Address, U256};
+use alloy_primitives::{Address, U256, address};
 use intent_services::domain::quote::{PriceQuality, QuoteRequest, QuoteResponse};
 use intent_services::run;
 

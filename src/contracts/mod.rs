@@ -1,1 +1,1 @@
-pub  mod quoter_v2;
+pub mod quoter_v2;

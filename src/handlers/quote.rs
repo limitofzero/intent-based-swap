@@ -14,7 +14,7 @@ pub async fn get_quote(
         Ok(quote) => Ok(Json(quote)),
         Err(e) => match e {
             QuoterError::InvalidQuoteRequest(msg) => Err(AppError::Validation(msg)),
-            QuoterError::FailedToGetPrice(msg) => Err(AppError::Internal(msg))
+            QuoterError::FailedToGetPrice(msg) => Err(AppError::Internal(msg)),
         },
     }
 }

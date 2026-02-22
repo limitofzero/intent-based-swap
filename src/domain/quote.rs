@@ -1,6 +1,6 @@
+use crate::domain::order::OrderType;
 use alloy::consensus::private::serde_json;
 use alloy_primitives::{Address, U256};
-use crate::domain::order::OrderType;
 
 #[derive(serde::Deserialize, serde::Serialize, Clone, Copy, Debug, PartialEq)]
 pub enum PriceQuality {
@@ -22,13 +22,12 @@ pub struct QuoteRequest {
     pub price_quality: PriceQuality,
 }
 
-
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 pub struct QuoteResponse {
     pub id: String,
-    pub  expires_at: u32,
-    pub  verified: bool,
-    pub  intent_to_sign: IntentToSign,
+    pub expires_at: u32,
+    pub verified: bool,
+    pub intent_to_sign: IntentToSign,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
@@ -41,4 +40,3 @@ pub struct IntentToSign {
     pub sell_amount: U256,
     pub buy_amount: U256,
 }
-

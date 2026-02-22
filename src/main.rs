@@ -1,6 +1,6 @@
 use alloy::providers::{Provider, ProviderBuilder};
-use intent_services::run;
 use intent_services::config::args::Args;
+use intent_services::run;
 
 #[tokio::main]
 async fn main() {

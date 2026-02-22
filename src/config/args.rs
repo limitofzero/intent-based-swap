@@ -1,7 +1,7 @@
 use clap::Parser;
 
 #[derive(Parser, Debug, Clone)]
-pub  struct Args {
+pub struct Args {
     #[arg(long, env = "RPC_URL", default_value = "")]
     pub rpc_url: String,
 }

@@ -1,18 +1,18 @@
 pub mod api;
+pub mod config;
+pub mod contracts;
 pub mod domain;
 pub mod handlers;
 pub mod services;
-pub mod contracts;
-pub  mod config;
 
-use std::sync::Arc;
-use alloy::network::Ethereum;
-use alloy::providers::{DynProvider};
 use crate::api::routes::get_router;
+use crate::services::price_provider::PriceProvider;
+use alloy::network::Ethereum;
+use alloy::providers::DynProvider;
 use axum::Router;
 use axum::serve::Serve;
+use std::sync::Arc;
 use tokio::net::TcpListener;
-use crate::services::price_provider::PriceProvider;
 
 pub struct AppState {
     quoter: Arc<services::quoter::Quoter>,
