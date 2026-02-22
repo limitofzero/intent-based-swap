@@ -26,11 +26,11 @@ impl Quoter {
     ) -> Result<QuoteResponse, QuoterError> {
         self.validate_quote_request(quote_request)?;
 
-        let (sell_token, buy_token, amount, is_sell) = if quote_request.sell_amount.is_some() {
+        let (sell_token, buy_token, amount, is_sell) = if let Some(sell_amount) = quote_request.sell_amount {
             (
                 quote_request.sell_token,
                 quote_request.buy_token,
-                quote_request.sell_amount.unwrap(),
+                sell_amount,
                 true,
             )
         } else {
@@ -106,11 +106,11 @@ impl Quoter {
             ));
         }
 
-        if payload.sell_amount.is_some() && payload.sell_amount.unwrap().is_zero() {
+        if payload.sell_amount.is_some_and(|a| a.is_zero()) {
             return Err(QuoterError::InvalidQuoteRequest(
                 "sell_amount should be greater than zero".to_string(),
             ));
-        } else if payload.buy_amount.is_some() && payload.buy_amount.unwrap().is_zero() {
+        } else if payload.buy_amount.is_some_and(|a| a.is_zero()) {
             return Err(QuoterError::InvalidQuoteRequest(
                 "buy_amount should be greater than zero".to_string(),
             ));
