@@ -26,21 +26,22 @@ impl Quoter {
     ) -> Result<QuoteResponse, QuoterError> {
         self.validate_quote_request(quote_request)?;
 
-        let (sell_token, buy_token, amount, is_sell) = if let Some(sell_amount) = quote_request.sell_amount {
-            (
-                quote_request.sell_token,
-                quote_request.buy_token,
-                sell_amount,
-                true,
-            )
-        } else {
-            (
-                quote_request.buy_token,
-                quote_request.sell_token,
-                quote_request.buy_amount.unwrap(),
-                false,
-            )
-        };
+        let (sell_token, buy_token, amount, is_sell) =
+            if let Some(sell_amount) = quote_request.sell_amount {
+                (
+                    quote_request.sell_token,
+                    quote_request.buy_token,
+                    sell_amount,
+                    true,
+                )
+            } else {
+                (
+                    quote_request.buy_token,
+                    quote_request.sell_token,
+                    quote_request.buy_amount.unwrap(),
+                    false,
+                )
+            };
 
         let amount_out = self
             .price_provider
