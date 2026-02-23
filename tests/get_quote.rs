@@ -18,7 +18,7 @@ async fn get_quote_success() {
         receiver: None,
         sell_token: WETH,
         buy_token: USDC,
-        sell_amount: Some(U256::from(1_000_000_000_000_000_000u128)), // 1 WETH
+        sell_amount: Some("1000000000000000000".to_string()), // 1 WETH
         buy_amount: None,
         slippage_bps: 50,
         valid_for_sec: 10, // minimum for PriceQuality::Fast
@@ -43,7 +43,7 @@ async fn get_quote_success() {
     assert!(result.verified);
     assert_eq!(result.intent_to_sign.sell_token, WETH);
     assert_eq!(result.intent_to_sign.buy_token, USDC);
-    assert!(result.intent_to_sign.buy_amount > U256::ZERO);
+    assert!(result.intent_to_sign.buy_amount.parse::<U256>().unwrap() > U256::ZERO);
 }
 
 async fn spawn_app() -> Option<String> {

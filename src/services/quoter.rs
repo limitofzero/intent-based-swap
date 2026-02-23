@@ -1,6 +1,7 @@
 use crate::domain::order::OrderType;
-use crate::domain::quote::{IntentToSign, PriceQuality, QuoteRequest, QuoteResponse};
+use crate::domain::quote::{IntentToSign, QuoteRequest, QuoteResponse};
 use crate::services::price_provider::PriceProvider;
+use alloy_primitives::{Address, U256};
 use std::sync::Arc;
 use thiserror::Error;
 
@@ -16,32 +17,40 @@ pub enum QuoterError {
     FailedToGetPrice(String),
 }
 
+#[derive(Debug, Clone)]
+struct ValidQuoteParams {
+    sell_token: Address,
+    buy_token: Address,
+    amount: U256,
+    is_sell: bool,
+    receiver: Address,
+    owner: Address,
+    slippage_bps: u16,
+    valid_for_sec: u32,
+}
+
+const FULL_BPS: u16 = 10_000;
+
 impl Quoter {
     pub fn new(price_provider: Arc<PriceProvider>) -> Self {
         Self { price_provider }
     }
     pub async fn get_quote(
         &self,
-        quote_request: &QuoteRequest,
+        quote_request: QuoteRequest,
     ) -> Result<QuoteResponse, QuoterError> {
-        self.validate_quote_request(quote_request)?;
-
-        let (sell_token, buy_token, amount, is_sell) =
-            if let Some(sell_amount) = quote_request.sell_amount {
-                (
-                    quote_request.sell_token,
-                    quote_request.buy_token,
-                    sell_amount,
-                    true,
-                )
-            } else {
-                (
-                    quote_request.buy_token,
-                    quote_request.sell_token,
-                    quote_request.buy_amount.unwrap(),
-                    false,
-                )
-            };
+        let valid_quote_params = self.validate_and_extract_quote_params(quote_request)?;
+        let ValidQuoteParams {
+            sell_token,
+            buy_token,
+            amount,
+            is_sell,
+            receiver,
+            owner,
+            valid_for_sec,
+            slippage_bps,
+            ..
+        } = valid_quote_params;
 
         let amount_out = self
             .price_provider
@@ -49,12 +58,17 @@ impl Quoter {
             .await
             .map_err(|err| QuoterError::FailedToGetPrice(err.to_string()))?;
 
+        let min_received = if slippage_bps > 0 {
+            amount_out * U256::from(FULL_BPS - slippage_bps) / U256::from(FULL_BPS)
+        } else {
+            amount_out
+        };
+
         let order_type = if is_sell {
             OrderType::Sell
         } else {
             OrderType::Buy
         };
-        let receiver = quote_request.receiver.unwrap_or(quote_request.owner);
 
         let (sell_amount, buy_amount) = if is_sell {
             (amount, amount_out)
@@ -64,59 +78,74 @@ impl Quoter {
 
         let intent_to_sign = IntentToSign {
             order_type,
-            owner: quote_request.owner,
+            owner,
             receiver,
             sell_token,
             buy_token,
-            sell_amount,
-            buy_amount,
+            sell_amount: sell_amount.to_string(),
+            buy_amount: buy_amount.to_string(),
         };
 
         let quote = QuoteResponse {
             id: uuid::Uuid::new_v4().to_string(),
-            expires_at: quote_request.valid_for_sec,
+            expires_at: valid_for_sec,
             intent_to_sign,
             verified: true,
+            min_received: min_received.to_string(),
         };
 
         Ok(quote)
     }
 
-    fn validate_quote_request(&self, payload: &QuoteRequest) -> Result<(), QuoterError> {
-        if payload.sell_amount.is_none() && payload.buy_amount.is_none() {
+    fn validate_and_extract_quote_params(
+        &self,
+        payload: QuoteRequest,
+    ) -> Result<ValidQuoteParams, QuoterError> {
+        let owner = payload.owner;
+        if owner == Address::ZERO {
             return Err(QuoterError::InvalidQuoteRequest(
-                "either buy_amount or sell_amount should be set".to_string(),
+                "owner should not be zero address".to_string(),
             ));
         }
 
-        if payload.sell_token == payload.buy_token {
+        let (sell_token, buy_token, amount, is_sell) =
+            if let Some(sell_amount) = payload.sell_amount {
+                (payload.sell_token, payload.buy_token, sell_amount, true)
+            } else if let Some(buy_amount) = payload.buy_amount {
+                (payload.buy_token, payload.sell_token, buy_amount, false)
+            } else {
+                return Err(QuoterError::InvalidQuoteRequest(
+                    "either buy_amount or sell_amount should be set".to_string(),
+                ));
+            };
+
+        let amount = amount.parse::<U256>().map_err(|_| {
+            QuoterError::InvalidQuoteRequest("amount should be a valid u256".to_string())
+        })?;
+
+        if amount.is_zero() {
+            return Err(QuoterError::InvalidQuoteRequest(
+                "amount should be greater than zero".to_string(),
+            ));
+        }
+
+        if sell_token == buy_token {
             return Err(QuoterError::InvalidQuoteRequest(
                 "sell_token and buy_token should be different".to_string(),
             ));
         }
 
-        if payload.price_quality == PriceQuality::Fast && payload.valid_for_sec < 10 {
-            return Err(QuoterError::InvalidQuoteRequest(
-                "valid_for_sec should be at least 10".to_string(),
-            ));
-        }
+        let receiver = payload.receiver.unwrap_or(owner);
 
-        if payload.price_quality == PriceQuality::Optimal && payload.valid_for_sec < 30 {
-            return Err(QuoterError::InvalidQuoteRequest(
-                "valid_for_sec should be at least 30".to_string(),
-            ));
-        }
-
-        if payload.sell_amount.is_some_and(|a| a.is_zero()) {
-            return Err(QuoterError::InvalidQuoteRequest(
-                "sell_amount should be greater than zero".to_string(),
-            ));
-        } else if payload.buy_amount.is_some_and(|a| a.is_zero()) {
-            return Err(QuoterError::InvalidQuoteRequest(
-                "buy_amount should be greater than zero".to_string(),
-            ));
-        }
-
-        Ok(())
+        Ok(ValidQuoteParams {
+            sell_token,
+            buy_token,
+            amount,
+            is_sell,
+            receiver,
+            owner: payload.owner,
+            slippage_bps: payload.slippage_bps,
+            valid_for_sec: payload.valid_for_sec,
+        })
     }
 }
